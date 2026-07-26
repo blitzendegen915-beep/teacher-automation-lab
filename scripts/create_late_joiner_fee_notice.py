@@ -133,7 +133,7 @@ for idx, s in enumerate(STUDENTS):
     set_cell(table, 0, 0, '宿泊・食事代')
     set_cell(table, 0, 1, f'{c["lodging"]:,}円　（{s["nights"]}泊＋増昼食＋BBQ）')
     set_cell(table, 1, 0, '交通費（帰路バスのみ）')
-    set_cell(table, 1, 1, f'{c["bus"]:,}円')
+    set_cell(table, 1, 1, f'{c["bus"]:,}円　（行きのバス代は対象外）')
     set_cell(table, 2, 0, '雑費')
     set_cell(table, 2, 1, f'{c["misc"]:,}円　（1,000円×参加{s["days_count"]}日分）')
     set_cell(table, 3, 0, 'グラウンド使用料')
