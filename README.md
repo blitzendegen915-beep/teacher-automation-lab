@@ -22,6 +22,14 @@ Googleスプレッドシートの「問題」シートに入力した文法問�
 - 使い方: `docs/google_forms_generator.md`
 - タスク指示書: `tasks/done/001-google-forms-generator.md`
 
+### 大学採用ページ 巡回ツール
+
+登録した大学の採用ページを毎日巡回し、更新のうち求人に関係する記述だけを抽出してメールで通知します。転職サイトに掲載されない求人を取りこぼさないための監視ツールです。
+
+- コード: `gas/university_job_watcher.gs`
+- 使い方: `docs/university_job_watcher.md`
+- タスク指示書: `tasks/done/006-university-job-watcher.md`
+
 ### 大学職員 採用試験対策パック
 
 高校英語科教員の経歴を前提に、大学職員の中途採用選考（書類・小論文・面接）を突破するための対策資料一式です。個人情報は含めていません。
