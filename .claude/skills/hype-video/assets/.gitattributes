@@ -1,0 +1,2 @@
+# AviUtlスクリプトはShift-JIS+CRLFで保存する。Gitに改行を変換させない。
+*.anm -text
