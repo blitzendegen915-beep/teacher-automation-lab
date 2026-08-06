@@ -1,0 +1,34 @@
+--track0:強さ,0.0,300.0,40.0,0.1
+--track1:速さ,1.0,60.0,25.0,0.1
+--track2:減衰,0.0,60.0,8.0,0.1
+--track3:回転,0.0,45.0,3.0,0.01
+--check0:大きさも揺らす,1
+@衝撃シェイク
+--[[
+  オブジェクトの先頭で強く揺れ、だんだん収まる効果。
+  タックル・トライ・スクラムがぶつかる瞬間のカットの頭に置く。
+
+  強さ       : 揺れ幅(px)。1080pなら30～60が目安。
+  速さ       : 1秒間に揺れ先が変わる回数。上げるほど細かく震える。
+  減衰       : 収まる速さ。0にすると最後まで揺れ続ける。
+  回転       : 傾きの最大量(度)。2～5度で十分効く。
+  大きさも揺らす : 揺れに合わせてわずかに拡大する。画面端の黒を防げる。
+
+  ※揺らすと画面の端に余白が出る。先に拡大率を105%ほどにしておくと隠せる。
+]]
+
+local level = math.exp(-obj.time * obj.track2)
+
+-- 揺れ先を切り替える段数。時間から決めるので毎フレーム暴れない
+local step = math.floor(obj.time * obj.track1)
+
+-- レイヤーごとに違う揺れ方になるようにする
+local seed = obj.layer * 97 + obj.index
+
+obj.ox = obj.ox + rand(-100, 100, seed,     step) / 100 * obj.track0 * level
+obj.oy = obj.oy + rand(-100, 100, seed + 1, step) / 100 * obj.track0 * level
+obj.rz = obj.rz + rand(-100, 100, seed + 2, step) / 100 * obj.track3 * level
+
+if obj.check0 then
+    obj.zoom = obj.zoom * (1 + rand(0, 100, seed + 3, step) / 100 * 0.05 * level)
+end

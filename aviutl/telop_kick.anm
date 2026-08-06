@@ -1,0 +1,54 @@
+--track0:入り時間,0.05,3.00,0.35,0.01
+--track1:移動量,-800,800,80,1
+--track2:跳ね,0,200,60,1
+--track3:出時間,0.00,3.00,0.25,0.01
+--check0:横から入れる,0
+@テロップキック
+--[[
+  テキストを、行き過ぎてから戻る動き（オーバーシュート）で出す。
+  等速で入れるより一気に見栄えが良くなるので、テロップは基本これで出す。
+
+  入り時間 : 入り終わるまでの秒数。0.25～0.4が小気味よい。
+  移動量   : どこから入ってくるか(px)。プラスで下(右)から、マイナスで上(左)から。
+  跳ね     : 行き過ぎる量。0で普通の減速、60～100でバネっぽくなる。
+  出時間   : 最後にフェードアウトする秒数。0にすると出っぱなし。
+  横から入れる : オンで左右方向、オフで上下方向。
+
+  ※テキストオブジェクトに追加して使う。文字を1つずつ動かしたいときは
+    テキストの設定で「文字毎に個別オブジェクト」をオンにすると、
+    このスクリプトが文字ごとに時間差なしで掛かる（時間差は別途「文字送り」系で）。
+]]
+
+local tin   = obj.track0
+local dist  = obj.track1
+local over  = obj.track2 / 100
+local tout  = obj.track3
+
+local t     = obj.time
+local total = obj.totaltime
+
+-- 入り：0 → 1 に進む。跳ねがあると途中で1を超えてから戻る
+local p = 1
+if t < tin then
+    local x  = t / tin
+    local c1 = 1.70158 * over
+    local c3 = c1 + 1
+    p = 1 + c3 * (x - 1) ^ 3 + c1 * (x - 1) ^ 2
+
+    -- 動きより少し早く出現させる
+    obj.alpha = obj.alpha * math.min(x * 2, 1)
+end
+
+local d = dist * (1 - p)
+if obj.check0 then
+    obj.ox = obj.ox + d
+else
+    obj.oy = obj.oy + d
+end
+
+-- 出：終わり際にフェードアウト
+if tout > 0 and t > total - tout then
+    local rest = (total - t) / tout
+    if rest < 0 then rest = 0 end
+    obj.alpha = obj.alpha * rest
+end

@@ -29,3 +29,12 @@ Googleスプレッドシートの「問題」シートに入力した文法問�
 - コード: `web/shop/`
 - 使い方: `docs/material_shop.md`
 - タスク指示書: `tasks/done/002-material-shop-site.md`
+
+### 部活動ハイライト動画（AviUtl）
+
+部活動のかっこいいハイライト動画を AviUtl で作るための、スクリプトと手順書です。曲のビートにカットを合わせる「音ハメ」、スローモーション、シネマティックな色味、テロップ演出を扱います。撮影のカメラ設定と、公開前の著作権・肖像権の確認事項もまとめてあります。
+
+- スクリプト: `aviutl/beat_punch.anm`（ビートパンチ）／`aviutl/impact_shake.anm`（衝撃シェイク）／`aviutl/telop_kick.anm`（テロップキック）
+- 音ハメ計算機: `aviutl/beatgrid.html`（ブラウザで開くだけ。BPMからカット位置のフレーム番号を出す）
+- 使い方: `docs/rugby_hype_video.md`
+- タスク指示書: `tasks/done/006-rugby-hype-video.md`

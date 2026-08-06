@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ビートグリッド計算機 | 音ハメ用</title>
+<style>
+  :root {
+    --bg: #16181d;
+    --panel: #1f2229;
+    --line: #333844;
+    --text: #e8eaef;
+    --muted: #9aa2b1;
+    --accent: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 64px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, sans-serif;
+    line-height: 1.7;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .lead { color: var(--muted); font-size: 0.9rem; margin: 0 0 24px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+  h2 { font-size: 1rem; margin: 0 0 14px; }
+  .fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+  input, select {
+    width: 100%;
+    padding: 8px 10px;
+    background: #14161a;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button {
+    padding: 9px 16px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #2a2f39;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  button:hover { background: #343a46; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #10231a; font-weight: 700; }
+  button.primary:hover { background: #6ee79b; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .stat .k { font-size: 0.78rem; color: var(--muted); }
+  .stat .v { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+  .stat .u { font-size: 0.8rem; color: var(--muted); font-weight: 400; margin-left: 3px; }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 0.78rem; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  tr.bar td { background: #262b34; font-weight: 700; }
+  .note { font-size: 0.82rem; color: var(--muted); }
+  .note ul { padding-left: 1.2em; margin: 6px 0 0; }
+  #tapinfo { font-size: 0.85rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>ビートグリッド計算機</h1>
+  <p class="lead">曲のBPMから、カットを置くフレーム番号を出します。AviUtlのタイムラインでこの番号にカット点を合わせると、音ハメになります。</p>
+
+  <div class="panel">
+    <h2>入力</h2>
+    <div class="fields">
+      <div>
+        <label for="bpm">BPM（曲のテンポ）</label>
+        <input type="number" id="bpm" value="120" min="20" max="400" step="0.01">
+      </div>
+      <div>
+        <label for="fps">プロジェクトのフレームレート</label>
+        <select id="fps">
+          <option value="60" selected>60 fps</option>
+          <option value="59.94">59.94 fps</option>
+          <option value="30">30 fps</option>
+          <option value="29.97">29.97 fps</option>
+          <option value="24">24 fps</option>
+        </select>
+      </div>
+      <div>
+        <label for="offset">1拍目の位置（秒）</label>
+        <input type="number" id="offset" value="0" step="0.001">
+      </div>
+      <div>
+        <label for="every">何拍ごとにカットするか</label>
+        <select id="every">
+          <option value="0.5">0.5拍（かなり速い）</option>
+          <option value="1" selected>1拍</option>
+          <option value="2">2拍</option>
+          <option value="4">4拍（1小節）</option>
+          <option value="8">8拍（2小節）</option>
+        </select>
+      </div>
+      <div>
+        <label for="length">出力する長さ（秒）</label>
+        <input type="number" id="length" value="60" min="1" max="900" step="1">
+      </div>
+    </div>
+
+    <div class="row">
+      <button type="button" class="primary" id="tap">テンポをタップ（曲に合わせて連打）</button>
+      <button type="button" id="tapreset">タップをリセット</button>
+      <span id="tapinfo">BPMが分からないときは、曲を再生しながらこのボタンを拍に合わせて叩いてください。</span>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="stat"><div class="k">1拍の長さ</div><div class="v"><span id="beatFrames">30.00</span><span class="u">フレーム</span></div></div>
+    <div class="stat"><div class="k">1拍の秒数</div><div class="v"><span id="beatSec">0.500</span><span class="u">秒</span></div></div>
+    <div class="stat"><div class="k">カット間隔</div><div class="v"><span id="cutFrames">30.00</span><span class="u">フレーム</span></div></div>
+    <div class="stat"><div class="k">カット数</div><div class="v"><span id="cutCount">0</span><span class="u">個</span></div></div>
+  </div>
+
+  <div class="panel">
+    <h2>カット位置</h2>
+    <div class="row" style="margin-top:0; margin-bottom:12px;">
+      <button type="button" id="copy">フレーム番号をコピー</button>
+      <span class="note" id="copystate"></span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>小節</th><th>拍</th><th>時間</th><th>フレーム番号</th><th>前のカットからの長さ</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel note">
+    <strong>使い方のコツ</strong>
+    <ul>
+      <li>フレーム番号は0始まりです。AviUtlの拡張編集も0始まりなので、そのまま合わせられます。</li>
+      <li>色の濃い行が小節の頭（4拍ごと）です。大きく切り替えるカットはここに置くと落ち着きます。</li>
+      <li>1拍の長さが整数フレームにならない場合、ズレが少しずつ溜まります。表の番号は毎回計算し直した値なので、表のとおりに置けばズレません。</li>
+      <li>「1拍目の位置」は、曲の頭に無音や入りの間があるときに使います。波形を見て最初のドンの秒数を入れてください。</li>
+      <li>BGMを先にタイムラインへ置き、この番号でカットしてから映像を差し込むと早いです。</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var el = function (id) { return document.getElementById(id); };
+  var inputs = ["bpm", "fps", "offset", "every", "length"];
+  var frames = [];
+
+  function fmtTime(sec) {
+    var m = Math.floor(sec / 60);
+    var s = sec - m * 60;
+    return m + ":" + (s < 10 ? "0" : "") + s.toFixed(3);
+  }
+
+  function update() {
+    var bpm = parseFloat(el("bpm").value);
+    var fps = parseFloat(el("fps").value);
+    var offset = parseFloat(el("offset").value);
+    var every = parseFloat(el("every").value);
+    var length = parseFloat(el("length").value);
+
+    var tbody = el("rows");
+    tbody.innerHTML = "";
+    frames = [];
+
+    // 入力が空や0のときは、前の計算結果が残らないように消しておく
+    if (!(bpm > 0) || !(fps > 0) || !(length > 0)) {
+      el("beatSec").textContent = "-";
+      el("beatFrames").textContent = "-";
+      el("cutFrames").textContent = "-";
+      el("cutCount").textContent = "0";
+      return;
+    }
+    if (!isFinite(offset)) { offset = 0; }
+
+    var beatSec = 60 / bpm;
+    var cutSec = beatSec * every;
+
+    el("beatSec").textContent = beatSec.toFixed(3);
+    el("beatFrames").textContent = (beatSec * fps).toFixed(2);
+    el("cutFrames").textContent = (cutSec * fps).toFixed(2);
+
+    // 行が増えすぎないように上限を設ける
+    var max = Math.min(Math.floor((length - offset) / cutSec) + 1, 600);
+    if (max < 0) { max = 0; }
+
+    var prev = null;
+    var rowsHtml = "";
+    for (var i = 0; i < max; i++) {
+      var sec = offset + cutSec * i;
+      if (sec < 0) { continue; }
+      var frame = Math.round(sec * fps);
+      frames.push(frame);
+
+      var beatIndex = every * i;            // 1拍目を0とした通し拍数
+      var bar = Math.floor(beatIndex / 4) + 1;
+      var beatInBar = beatIndex % 4 + 1;
+      var isBarHead = Math.abs(beatIndex % 4) < 1e-9;
+
+      var diff = prev === null ? "-" : (frame - prev) + " フレーム";
+      prev = frame;
+
+      rowsHtml += "<tr" + (isBarHead ? ' class="bar"' : "") + ">"
+        + "<td>" + bar + "</td>"
+        + "<td>" + (Number.isInteger(beatInBar) ? beatInBar : beatInBar.toFixed(1)) + "</td>"
+        + "<td>" + fmtTime(sec) + "</td>"
+        + "<td>" + frame + "</td>"
+        + "<td>" + diff + "</td>"
+        + "</tr>";
+    }
+    tbody.innerHTML = rowsHtml;
+    el("cutCount").textContent = frames.length;
+  }
+
+  inputs.forEach(function (id) {
+    el(id).addEventListener("input", update);
+    el(id).addEventListener("change", update);
+  });
+
+  // タップテンポ：叩いた間隔の平均からBPMを出す
+  var taps = [];
+  el("tap").addEventListener("click", function () {
+    var now = performance.now();
+    // 3秒以上空いたら測り直し
+    if (taps.length && now - taps[taps.length - 1] > 3000) { taps = []; }
+    taps.push(now);
+
+    if (taps.length < 2) {
+      el("tapinfo").textContent = "測定中… もう何回か叩いてください。";
+      return;
+    }
+    // 直近16打ぶんだけ使う
+    if (taps.length > 16) { taps.shift(); }
+    var span = taps[taps.length - 1] - taps[0];
+    var bpm = 60000 / (span / (taps.length - 1));
+    el("bpm").value = bpm.toFixed(2);
+    el("tapinfo").textContent = taps.length + "打で測定：" + bpm.toFixed(2) + " BPM（叩くほど正確になります）";
+    update();
+  });
+
+  el("tapreset").addEventListener("click", function () {
+    taps = [];
+    el("tapinfo").textContent = "リセットしました。もう一度叩いてください。";
+  });
+
+  el("copy").addEventListener("click", function () {
+    var text = frames.join("\n");
+    var done = function () {
+      el("copystate").textContent = frames.length + "個のフレーム番号をコピーしました。";
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () {
+        el("copystate").textContent = "コピーできませんでした。表から手で控えてください。";
+      });
+    } else {
+      el("copystate").textContent = "このブラウザではコピーできません。表から手で控えてください。";
+    }
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>
