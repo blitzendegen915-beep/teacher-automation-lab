@@ -22,6 +22,14 @@ Googleスプレッドシートの「問題」シートに入力した文法問�
 - 使い方: `docs/google_forms_generator.md`
 - タスク指示書: `tasks/done/001-google-forms-generator.md`
 
+### 求人メール抽出ツール
+
+転職サイトから届く求人メールを毎日読み、大学・学校法人の案件だけを抽出して1通にまとめて通知します。求人サイトは自動巡回できないため、受信済みのメールを情報源にします。
+
+- コード: `gas/university_job_mail_digest.gs`
+- 使い方: `docs/university_job_mail_digest.md`
+- タスク指示書: `tasks/done/007-university-job-mail-digest.md`
+
 ### 大学採用ページ 巡回ツール
 
 登録した大学の採用ページを毎日巡回し、更新のうち求人に関係する記述だけを抽出してメールで通知します。転職サイトに掲載されない求人を取りこぼさないための監視ツールです。
