@@ -12,6 +12,15 @@
 
 実装時は `AGENTS.md` の方針に従います。完了後は、必要に応じて `README.md` と `docs/` も更新します。
 
+## note 記事の生産ライン
+
+note で公開・販売する記事の原稿とネタ出しは `note/` 配下で管理します。
+
+- `note/README.md`: 執筆から公開までの手順・価格の付け方
+- `note/backlog.md`: ネタ出しリスト（書く前にここから選ぶ）
+- `note/templates/`: 記事のひな型
+- `note/drafts/`: 原稿
+
 ## ツール
 
 ### Google Forms 小テスト自動作成
