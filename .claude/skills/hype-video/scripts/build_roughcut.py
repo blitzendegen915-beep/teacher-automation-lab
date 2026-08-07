@@ -57,15 +57,37 @@ FF = None
 VIDEO_EXT = (".mp4", ".mov", ".m4v", ".avi", ".mkv", ".MP4", ".MOV")
 
 
-def find_font():
-    for p in ("/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
-              "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-              "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
-              "C:/Windows/Fonts/meiryob.ttc", "C:/Windows/Fonts/YuGothB.ttc",
-              "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"):
-        if os.path.exists(p):
-            return p
-    return None
+def find_font(user_font=None):
+    """テロップ用のフォントを探す。太いものを優先する。
+
+    ハイプ動画のキャッチコピーは極太で出すのが基本で、細いゴシックだと
+    一気に安っぽくなる。Windows なら メイリオ太字 や 游ゴシック Bold があるので
+    それを使う。無ければ後段で疑似ボールドを掛けて太らせる。
+    """
+    if user_font and os.path.exists(user_font):
+        return user_font, False
+    bold = [
+        "C:/Windows/Fonts/meiryob.ttc",                     # メイリオ 太字
+        "C:/Windows/Fonts/YuGothB.ttc",                     # 游ゴシック Bold
+        "C:/Windows/Fonts/msgothic.ttc",
+        "/System/Library/Fonts/ヒラギノ角ゴシック W7.ttc",
+        "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
+    ]
+    for f in bold:
+        if os.path.exists(f):
+            return f, False
+    regular = [
+        "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
+        "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf",
+        "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
+    ]
+    for f in regular:
+        if os.path.exists(f):
+            return f, True          # 太字が無いので疑似ボールドが要る
+    return None, False
 
 
 # ------------------------------------------------------------------ 素材の解析
@@ -413,7 +435,7 @@ def render_cut(cut, idx, plan, work, src_stats):
     return out, None
 
 
-def draw_telop_png(path, text, label, size, font_path):
+def draw_telop_png(path, text, label, size, font_path, faux_bold=False):
     """テロップを透過PNGに描く。
 
     ffmpeg の drawtext は freetype 付きビルドでないと使えず、環境によっては入っていない
@@ -425,30 +447,38 @@ def draw_telop_png(path, text, label, size, font_path):
     font = ImageFont.truetype(font_path, size)
     small = ImageFont.truetype(font_path, max(int(size * 0.32), 14))
 
+    # 太字フォントが無い環境では、輪郭を太らせて疑似ボールドにする
+    sw = max(int(size * 0.045), 2) if faux_bold else 0
+    sws = 0                      # 小さいラベルは細いまま（太らせると潰れる）
+
     d0 = ImageDraw.Draw(Image.new("RGBA", (10, 10)))
-    tb = d0.textbbox((0, 0), text, font=font)
+    tb = d0.textbbox((0, 0), text, font=font, stroke_width=sw)
     tw, th = tb[2], tb[3]
     lab, lw, lh = "", 0, 0
     if label:
         # ラベルは字間を広げて小さく置く（参考動画の型）
         lab = "\u3000".join(list(label)) if len(label) <= 4 else label
-        lb = d0.textbbox((0, 0), lab, font=small)
+        lb = d0.textbbox((0, 0), lab, font=small, stroke_width=sws)
         lw, lh = lb[2], lb[3] + int(size * 0.22)
 
     W, H = max(tw, lw) + pad * 2, th + lh + pad * 2
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     if label:
-        d.text((pad + 2, pad + 3), lab, font=small, fill=(0, 0, 0, 120))
-        d.text((pad, pad), lab, font=small, fill=(255, 253, 248, 235))
+        d.text((pad + 2, pad + 3), lab, font=small, fill=(0, 0, 0, 120),
+               stroke_width=sws, stroke_fill=(0, 0, 0, 120))
+        d.text((pad, pad), lab, font=small, fill=(255, 253, 248, 235),
+               stroke_width=sws, stroke_fill=(255, 253, 248, 235))
     # 影を薄く落として、明るい映像に重なっても読めるようにする
-    d.text((pad + 3, pad + lh + 4), text, font=font, fill=(0, 0, 0, 130))
-    d.text((pad, pad + lh), text, font=font, fill=(255, 253, 248, 255))
+    d.text((pad + 3, pad + lh + 4), text, font=font, fill=(0, 0, 0, 130),
+           stroke_width=sw, stroke_fill=(0, 0, 0, 130))
+    d.text((pad, pad + lh), text, font=font, fill=(255, 253, 248, 255),
+           stroke_width=sw, stroke_fill=(255, 253, 248, 255))
     img.save(path)
     return W, H
 
 
-def telop_overlays(plan, font, title, tagline, work):
+def telop_overlays(plan, font, title, tagline, work, faux_bold=False):
     """テロップを overlay 用の指定に変換する。"""
     out = []
     if not font:
@@ -461,7 +491,7 @@ def telop_overlays(plan, font, title, tagline, work):
         if not text:
             continue
         png = os.path.join(work, f"telop_{i}.png")
-        pw, ph = draw_telop_png(png, text, tp.get("label", ""), tp["size"], font)
+        pw, ph = draw_telop_png(png, text, tp.get("label", ""), tp["size"], font, faux_bold)
         st, dur = tp["start"], tp["dur"]
         if tp.get("drift"):
             x = "(main_w-overlay_w)/2"
@@ -487,6 +517,7 @@ def main():
     ap.add_argument("--cache", default="", help="解析結果のキャッシュJSON（2回目以降が速い）")
     ap.add_argument("--max-clip-seconds", type=float, default=90.0,
                     help="1本あたり解析する秒数の上限。長回し素材があるときに効く")
+    ap.add_argument("--font", default="", help="テロップに使うフォントファイル。太いゴシックを指定する")
     ap.add_argument("--keep-work", action="store_true")
     args = ap.parse_args()
 
@@ -567,10 +598,12 @@ def main():
                     "-f", "concat", "-safe", "0", "-i", lst,
                     "-c", "copy", joined], check=True)
 
-    font = find_font()
+    font, faux = find_font(args.font)
     if not font:
         print("※ 日本語フォントが見つからないのでテロップは省きます")
-    tel = telop_overlays(plan, font, args.title, args.tagline, args.work)
+    else:
+        print(f"テロップのフォント: {font}" + ("（太字が無いので疑似ボールドを掛けます）" if faux else ""))
+    tel = telop_overlays(plan, font, args.title, args.tagline, args.work, faux)
 
     cmd = [FF, "-hide_banner", "-loglevel", "error", "-y", "-i", joined, "-i", args.music]
     for t in tel:
