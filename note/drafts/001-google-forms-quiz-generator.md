@@ -339,7 +339,7 @@ const form = FormApp.create(FORM_TITLE + ' ' + Utilities.formatDate(new Date(), 
 
 ---
 
-## 最後に
+## 浮いた17分の使い道
 
 自動化というと大げさに聞こえますが、やっていることは「**リストで持っているものを、リストのまま扱う**」だけです。
 

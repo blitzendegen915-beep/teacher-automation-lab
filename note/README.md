@@ -19,8 +19,24 @@ note にはノウハウ記事が大量にありますが、**動く成果物（�
 | 場所 | 中身 |
 | --- | --- |
 | `note/backlog.md` | ネタ出しリスト。書く前にここから選ぶ |
+| `note/style-guide.md` | **AIが書いたと思われない日本語にする直し方** |
+| `note/tools/ai-check.js` | 原稿の「AI臭」を機械的に拾うチェッカー |
 | `note/templates/paid-article.md` | 有料記事のひな型 |
 | `note/drafts/` | 執筆中・完成した原稿（Markdown） |
+
+## AI原稿を直す
+
+ChatGPT等に下書きを書かせた場合は、公開前に必ず通します。
+
+```
+node note/tools/ai-check.js note/drafts/001-google-forms-quiz-generator.md
+```
+
+複数まとめて見るなら `node note/tools/ai-check.js note/drafts/*.md` です。
+指摘の直し方は `note/style-guide.md` にまとめてあります。
+
+AI臭は語彙より**リズムと構造**から出ます。単語を言い換えるだけでは消えません。
+詳しくはスタイルガイドを読んでください。
 
 ## 執筆から公開までの手順
 

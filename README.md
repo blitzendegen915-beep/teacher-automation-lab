@@ -18,6 +18,8 @@ note で公開・販売する記事の原稿とネタ出しは `note/` 配下で
 
 - `note/README.md`: 執筆から公開までの手順・価格の付け方
 - `note/backlog.md`: ネタ出しリスト（書く前にここから選ぶ）
+- `note/style-guide.md`: AIが書いたと思われない日本語にする直し方
+- `note/tools/ai-check.js`: 原稿の「AI臭」チェッカー（`node note/tools/ai-check.js <原稿.md>`）
 - `note/templates/`: 記事のひな型
 - `note/drafts/`: 原稿
 
