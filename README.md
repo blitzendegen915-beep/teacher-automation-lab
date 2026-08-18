@@ -36,6 +36,7 @@ Googleスプレッドシートの「問題」シートに入力した文法問�
 
 - スクリプト: `aviutl/beat_punch.anm`（ビートパンチ）／`aviutl/impact_shake.anm`（衝撃シェイク）／`aviutl/telop_kick.anm`（テロップキック）／`aviutl/telop_drift.anm`（テロップドリフト）／`aviutl/ease_push.anm`（イーズ寄り）
 - 音ハメ計算機: `aviutl/beatgrid.html`（ブラウザで開くだけ。BPMからカット位置のフレーム番号を出す）
+- 速度ランプ計算機: `aviutl/speedramp.html`（イージング付きのスロー用。均等割りではなくカーブに沿った段階速度を出す）
 - 使い方: `docs/rugby_hype_video.md`
 - タスク指示書: `tasks/done/006-rugby-hype-video.md`
 

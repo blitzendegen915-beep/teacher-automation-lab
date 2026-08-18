@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>速度ランプ計算機 | イージング付きスロー用</title>
+<style>
+  :root {
+    --bg: #16181d;
+    --panel: #1f2229;
+    --line: #333844;
+    --text: #e8eaef;
+    --muted: #9aa2b1;
+    --accent: #4ade80;
+    --accent2: #60a5fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 64px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, sans-serif;
+    line-height: 1.7;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .lead { color: var(--muted); font-size: 0.9rem; margin: 0 0 24px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+  h2 { font-size: 1rem; margin: 0 0 14px; }
+  .fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+  input, select {
+    width: 100%;
+    padding: 8px 10px;
+    background: #14161a;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .curvebtns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .curvebtns button {
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #2a2f39;
+    color: var(--text);
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .curvebtns button:hover { background: #343a46; }
+  .curvebtns button.active { background: var(--accent); border-color: var(--accent); color: #10231a; font-weight: 700; }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .stat .k { font-size: 0.78rem; color: var(--muted); }
+  .stat .v { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+  .stat .u { font-size: 0.8rem; color: var(--muted); font-weight: 400; margin-left: 3px; }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 0.78rem; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  .bar-cell { text-align: left; min-width: 160px; }
+  .bar-track { background: #14161a; border-radius: 4px; height: 14px; overflow: hidden; position: relative; }
+  .bar-fill { background: linear-gradient(90deg, var(--accent2), var(--accent)); height: 100%; }
+  .note { font-size: 0.82rem; color: var(--muted); }
+  .note ul { padding-left: 1.2em; margin: 6px 0 0; }
+  .compare { font-size: 0.82rem; color: var(--muted); margin-top: 8px; }
+  .compare b { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>速度ランプ計算機</h1>
+  <p class="lead">
+    AviUtl の再生速度は、1つのオブジェクトの中でなめらかに変化させることができません。
+    オブジェクトを分割して段階的に速度を変える必要がありますが、<b>各段の速度を均等割りにすると
+    「直線」になり、イージングになりません。</b>この計算機は、各段の速度をイージングのカーブに
+    沿ってサンプルし、AviUtl にそのまま入力できる分割位置と速度の一覧を出します。
+  </p>
+
+  <div class="panel">
+    <h2>入力</h2>
+    <div class="fields">
+      <div>
+        <label for="start">開始速度（%）</label>
+        <input type="number" id="start" value="100" step="1">
+      </div>
+      <div>
+        <label for="end">終了速度（%）</label>
+        <input type="number" id="end" value="25" step="1">
+      </div>
+      <div>
+        <label for="dur">区間の長さ（秒）</label>
+        <input type="number" id="dur" value="1.0" min="0.05" step="0.05">
+      </div>
+      <div>
+        <label for="fps">プロジェクトのフレームレート</label>
+        <select id="fps">
+          <option value="60">60 fps</option>
+          <option value="30" selected>30 fps</option>
+          <option value="29.97">29.97 fps</option>
+          <option value="24">24 fps</option>
+        </select>
+      </div>
+      <div>
+        <label for="steps">段数</label>
+        <input type="number" id="steps" value="5" min="2" max="20" step="1">
+      </div>
+      <div>
+        <label for="curve">カーブ（-100〜100）</label>
+        <input type="number" id="curve" value="70" min="-100" max="100" step="1">
+      </div>
+    </div>
+    <div class="curvebtns">
+      <button type="button" data-curve="0">0：直線（均等割り。これはイージングではない）</button>
+      <button type="button" data-curve="70" class="active">+70：イーズアウト（最初に一気に変わり、後半はゆっくり）</button>
+      <button type="button" data-curve="-70">-70：イーズイン（最初はほぼ変わらず、最後に一気に）</button>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="stat"><div class="k">区間の総フレーム数</div><div class="v"><span id="totalFrames">30</span></div></div>
+    <div class="stat"><div class="k">1段あたりの平均フレーム数</div><div class="v"><span id="avgFrames">6.0</span></div></div>
+    <div class="stat"><div class="k">判定</div><div class="v" id="judge" style="font-size:1.1rem;">—</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>AviUtl に入力する値</h2>
+    <p class="note">
+      映像オブジェクトを、下の「分割フレーム」の位置で分割します（対象フレームで右クリック→「分割」、または
+      ショートカット <code>S</code>）。分割してできた各オブジェクトの「再生速度」欄に、上から順に「速度」の値を入れます。
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>段</th><th>開始フレーム</th><th>終了フレーム</th><th>長さ(フレーム)</th><th>速度</th><th class="bar-cell">速度の変化</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="compare" id="warnShort"></p>
+  </div>
+
+  <div class="panel">
+    <h2>直線との比較（同じ区間・同じ段数）</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>段</th><th>直線（均等割り＝イージングではない）</th><th id="curveLabel">選んだカーブ</th><th>差</th></tr></thead>
+        <tbody id="cmpRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel note">
+    <strong>読み方</strong>
+    <ul>
+      <li><b>直線（均等割り）は、AviUtl上ではよく使われますが、厳密にはイージングではありません。</b> 各段が同じ量だけ変化するので、機械的な階段状の変化に感じます。</li>
+      <li><b>イーズアウト</b>は、最初の1〜2段で速度が大きく落ち、後半はほとんど動きません。「だんだんゆっくりになる」自然な減速に見えます。ブレイク直前や、スクラム後の余韻に向きます。</li>
+      <li><b>イーズイン</b>は、最初はほとんど変わらず、最後の1段で一気に落ちます。「溜めてから来る」演出に向きます。前振りが長い分、短い区間では効果が出にくいので注意してください。</li>
+      <li>1段あたりのフレーム数が少なすぎると、どのカーブを選んでも違いがほぼ見えません。目安は<b>1段あたり最低3フレーム</b>です。</li>
+      <li>この計算機のカーブの数式は、<code>aviutl/ease_push.anm</code>（イーズ寄り）と同じものを使っています。「カーブ」の数値は共通の感覚で使えます。</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var el = function (id) { return document.getElementById(id); };
+  var ids = ["start", "end", "dur", "fps", "steps", "curve"];
+
+  function ease(p, curve) {
+    var k = curve / 100;
+    var a = 1 + Math.abs(k) * 3;
+    if (k > 0) return 1 - Math.pow(1 - p, a);
+    if (k < 0) return Math.pow(p, a);
+    return p;
+  }
+
+  function frameSplits(totalFrames, n) {
+    // 端数を切り捨てず、累積で丸めて過不足なく総フレーム数に一致させる
+    var bounds = [0];
+    for (var i = 1; i <= n; i++) {
+      bounds.push(Math.round(totalFrames * i / n));
+    }
+    return bounds;
+  }
+
+  function render() {
+    var start = parseFloat(el("start").value);
+    var end = parseFloat(el("end").value);
+    var dur = parseFloat(el("dur").value);
+    var fps = parseFloat(el("fps").value);
+    var n = Math.round(parseFloat(el("steps").value));
+    var curve = parseFloat(el("curve").value);
+
+    if (!isFinite(start) || !isFinite(end) || !(dur > 0) || !(fps > 0) || !(n >= 2)) return;
+
+    var totalFrames = Math.round(dur * fps);
+    el("totalFrames").textContent = totalFrames;
+    el("avgFrames").textContent = (totalFrames / n).toFixed(1);
+
+    var judge = el("judge");
+    var perStep = totalFrames / n;
+    if (perStep < 3) {
+      judge.textContent = "段数が多すぎ";
+      judge.style.color = "#f87171";
+    } else if (perStep < 5) {
+      judge.textContent = "ぎりぎり";
+      judge.style.color = "#facc15";
+    } else {
+      judge.textContent = "余裕あり";
+      judge.style.color = "#4ade80";
+    }
+
+    var bounds = frameSplits(totalFrames, n);
+    var maxAbs = Math.max(Math.abs(start), Math.abs(end), 1);
+
+    var rowsHtml = "";
+    var values = [];
+    for (var i = 0; i < n; i++) {
+      var p = (i + 0.5) / n; // 各段の中央時刻でサンプルする
+      var pe = ease(p, curve);
+      var v = start + (end - start) * pe;
+      values.push(v);
+      var f0 = bounds[i], f1 = bounds[i + 1];
+      var pct = Math.max(0, Math.min(100, (v / maxAbs) * 50 + 50));
+      rowsHtml += "<tr>"
+        + "<td>" + (i + 1) + "</td>"
+        + "<td>" + f0 + "</td>"
+        + "<td>" + f1 + "</td>"
+        + "<td>" + (f1 - f0) + "</td>"
+        + "<td>" + v.toFixed(1) + "%</td>"
+        + "<td class='bar-cell'><div class='bar-track'><div class='bar-fill' style='width:" + pct.toFixed(1) + "%'></div></div></td>"
+        + "</tr>";
+    }
+    el("rows").innerHTML = rowsHtml;
+
+    el("warnShort").textContent = perStep < 3
+      ? "1段あたり " + perStep.toFixed(1) + " フレームしかありません。段数を減らすか、区間を長くしてください。カーブの差が出ません。"
+      : "";
+
+    // 比較表：直線 vs 選んだカーブ
+    var cmpHtml = "";
+    var curveName = curve > 0 ? ("イーズアウト(+" + curve + ")") : curve < 0 ? ("イーズイン(" + curve + ")") : "直線(0)";
+    el("curveLabel").textContent = curveName;
+    for (var j = 0; j < n; j++) {
+      var pl = (j + 0.5) / n;
+      var linear = start + (end - start) * pl;
+      var diff = values[j] - linear;
+      cmpHtml += "<tr>"
+        + "<td>" + (j + 1) + "</td>"
+        + "<td>" + linear.toFixed(1) + "%</td>"
+        + "<td>" + values[j].toFixed(1) + "%</td>"
+        + "<td>" + (diff >= 0 ? "+" : "") + diff.toFixed(1) + "</td>"
+        + "</tr>";
+    }
+    el("cmpRows").innerHTML = cmpHtml;
+  }
+
+  ids.forEach(function (id) {
+    el(id).addEventListener("input", render);
+    el(id).addEventListener("change", render);
+  });
+
+  var btns = document.querySelectorAll(".curvebtns button");
+  btns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      el("curve").value = b.getAttribute("data-curve");
+      btns.forEach(function (x) { x.classList.remove("active"); });
+      b.classList.add("active");
+      render();
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
