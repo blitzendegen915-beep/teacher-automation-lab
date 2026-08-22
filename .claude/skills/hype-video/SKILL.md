@@ -264,7 +264,59 @@ python scripts/build_roughcut.py --footage 素材フォルダ --music Prime.mp3 
 
 ---
 
-## 7. 公開前に必ず確認すること
+## 7. シルエット素材を作る（ペルソナ5風など）
+
+人物だけを黒単色にして背景をグリーンバックにした素材は、
+「シルエット → シーンチェンジ → 実写」という見せ方の要になる。
+`scripts/make_silhouette.py` がこれを作る。
+
+```bash
+pip install av ai-edge-litert scipy pillow numpy imageio-ffmpeg
+# モデルを取得（初回のみ）
+mkdir -p models
+curl -L -o models/deeplab_v3.tflite \
+  https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite
+curl -L -o models/selfie_multiclass_256x256.tflite \
+  https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite
+
+python scripts/make_silhouette.py 素材.mp4 -o silhouette_green.mp4
+```
+
+### クロマキーや輝度キーでは絶対にうまくいかない
+
+芝・空・白線・フェンスを必ず拾ってノイズだらけになる。人物セグメンテーションの
+モデルを使うこと。これは選択ではなく前提。
+
+### 効いている工夫
+
+1. **2段構え。** deeplab_v3 で全画面から人物の位置を掴み、そこを切り出して
+   selfie_multiclass に入れ直す。256x256 の入力を1人ぶんに使うので、
+   全画面で回すより腕・脚の隙間がはっきり出る（実測で別物になる）
+2. **切り出す前に箱を統合する。** 1人が「頭」「胴」「脚」に分裂して検出されるのは
+   日常茶飯事で、分裂したまま切り出すとシルエットがバラバラになる。
+   `--merge` で膨らませてから連結成分を取り、1人1箱にまとめる
+3. **切り出しの余白は狭く（`--pad 0.08`）。** このモデルは人物が画面いっぱいに
+   写っている前提で学習されているので、余白が広いと精度が落ちる。
+   実測で pad 0.30 → 0.08 にすると、画面端で見切れた人物の分断が解消した
+4. **人らしくない形を捨てる。** 極端に横長（`--max-aspect`）・小さすぎる
+   （`--min-area` `--min-height`）連結成分は、白線やフェンスの誤検出。
+   これを落とすのがノイズ対策の本体
+5. **輪郭はぼかしてから閾値を取り直す。** ギザギザだけ取れて形は保たれる
+6. **前後フレームで平均する（`--temporal`）。** これがないとチラつく
+
+### 速度
+
+`--merge` の膨張を原寸で掛けると1フレーム2秒以上かかる。縮小してから掛ければ
+結果はほぼ同じで100倍速い。箱を決めるだけの用途なので精度はこれで足りる。
+
+### 確認の仕方
+
+`--preview 0.5,6.0,12.0` で指定秒のPNGだけ出せる。**必ず原画と並べて目で見ること。**
+面積の数値だけ見ていても、分断や誤検出には気づけない。
+
+---
+
+## 8. 公開前に必ず確認すること
 
 学校やチームの動画では、出来より先にここを片づける。飛ばさないこと。
 
@@ -286,6 +338,7 @@ python scripts/build_roughcut.py --footage 素材フォルダ --music Prime.mp3 
 - `references/aviutl.md` — AviUtl とプラグインの導入、スクリプトの設置、色味・黒帯・書き出しの具体的な操作、うまくいかないときの対処
 - `references/shooting.md` — 撮影設定、撮るべきカットの一覧、やりがちな失敗
 - `references/telop.md` — テロップと文字演出の型、字体の選び方、情報の組み方
+- `scripts/make_silhouette.py` — 人物を黒・背景をグリーンバックにしたシルエット素材を作る
 - `scripts/prime_plan.json` — 楽曲『Prime』に合わせた編集プランの実例（区間・色味・テロップ）
 
 ## 成果物の渡し方
