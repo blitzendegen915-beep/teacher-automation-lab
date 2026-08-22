@@ -157,6 +157,13 @@ def check_unsettled(camp: model.Camp) -> list:
 def check_missing_receipts(camp: model.Camp) -> list:
     findings = []
     dates_with_expense = {e.date for e in camp.expenses}
+
+    try:
+        prior = model.prior_year_misc_summary()
+        prior_note = f"昨年は雑費{prior['count']}件・計¥{prior['total']:,} が記録されている"
+    except FileNotFoundError:
+        prior_note = "昨年の雑費台帳データが見つからず件数の比較はできない"
+
     for d in camp.date_range():
         if d not in dates_with_expense:
             findings.append(
@@ -164,10 +171,47 @@ def check_missing_receipts(camp: model.Camp) -> list:
                     "warn",
                     "missing_receipts",
                     f"{date_ja(d)} の支出記録が1件もありません。"
-                    "昨年は雑費36件が記録されており、支出が1件も無い日があるのは"
+                    f"{prior_note}のに対し、合宿7日間で支出ゼロの日があるのは"
                     "領収書の回収漏れの可能性が高いです。畠山先生・占部先生に確認してください。",
                 )
             )
+    return findings
+
+
+def check_misc_vs_prior_year(camp: model.Camp) -> list:
+    """今年の雑費(分類C)合計を昨年の雑費台帳合計と比較し、大幅な過少を警告する。"""
+    findings = []
+    try:
+        prior = model.prior_year_misc_summary()
+    except FileNotFoundError:
+        return findings
+
+    prior_total = prior["total"]
+    if prior_total == 0:
+        return findings
+
+    this_year_total = sum(e.amount for e in camp.expenses if e.category == "C")
+    ratio = this_year_total / prior_total
+
+    if ratio < 0.5:
+        findings.append(
+            Finding(
+                "warn",
+                "misc_vs_prior_year_low",
+                f"今年の雑費（分類C）合計は ¥{this_year_total:,} で、"
+                f"昨年の雑費合計 ¥{prior_total:,} の {ratio:.0%} にとどまっています。"
+                "領収書の回収漏れがないか確認してください。",
+            )
+        )
+    else:
+        findings.append(
+            Finding(
+                "info",
+                "misc_vs_prior_year_ok",
+                f"今年の雑費（分類C）合計 ¥{this_year_total:,} は、"
+                f"昨年の雑費合計 ¥{prior_total:,} の {ratio:.0%} です。",
+            )
+        )
     return findings
 
 
@@ -213,6 +257,7 @@ ALL_CHECKS = [
     check_balance,
     check_unsettled,
     check_missing_receipts,
+    check_misc_vs_prior_year,
     check_category_split,
 ]
 

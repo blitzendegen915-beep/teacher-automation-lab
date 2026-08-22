@@ -101,6 +101,13 @@ class Expense:
 
 
 @dataclass
+class PriorYearMiscItem:
+    date: date
+    item: str
+    amount: int
+
+
+@dataclass
 class Presence:
     """ある一人について、合宿期間中に在籍が認められる食事・宿泊日の集合。"""
 
@@ -290,6 +297,112 @@ def load(camp_id: str = "2026-summer") -> Camp:
     camp.roster = _load_roster(year)
     camp.expenses = _load_expenses(camp_id)
     return camp
+
+
+def load_prior_year_misc(year: str = "2025") -> list:
+    """前年度の雑費台帳（data/rugby/prior-year-misc-<year>.csv）を読み込む。"""
+    path = DATA_DIR / f"prior-year-misc-{year}.csv"
+    items = []
+    with open(path, encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            items.append(
+                PriorYearMiscItem(
+                    date=_parse_date(row["date"]),
+                    item=row["item"],
+                    amount=int(row["amount"]),
+                )
+            )
+    return items
+
+
+def prior_year_misc_summary(year: str = "2025") -> dict:
+    items = load_prior_year_misc(year)
+    return {"year": year, "items": items, "count": len(items), "total": sum(i.amount for i in items)}
+
+
+# ---------------------------------------------------------------------------
+# 支出台帳(CSV)の追記・精算フラグ更新
+# ---------------------------------------------------------------------------
+
+EXPENSE_FIELDNAMES = ["date", "vendor", "description", "amount", "category", "payer", "settled", "receipt", "note"]
+
+
+def expenses_csv_path(camp_id: str) -> Path:
+    return DATA_DIR / f"expenses-{camp_id}.csv"
+
+
+def _read_expense_rows(camp_id: str):
+    """支出台帳を文字列のままdictの行リストとして読み込む(列順を保持するため)。"""
+    path = expenses_csv_path(camp_id)
+    with open(path, encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        rows = list(reader)
+    return rows, fieldnames
+
+
+def _write_expense_rows(camp_id: str, rows: list, fieldnames: list) -> None:
+    path = expenses_csv_path(camp_id)
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _receipt_sort_key(receipt: str):
+    receipt = (receipt or "").strip()
+    if receipt.startswith("r") and receipt[1:].isdigit():
+        return (0, int(receipt[1:]), receipt)
+    return (1, 0, receipt)
+
+
+def next_receipt_id(rows: list) -> str:
+    """既存の rNNN のうち最大の番号の次を返す。"""
+    max_n = 0
+    for row in rows:
+        rid = (row.get("receipt") or "").strip()
+        if rid.startswith("r") and rid[1:].isdigit():
+            max_n = max(max_n, int(rid[1:]))
+    return f"r{max_n + 1:03d}"
+
+
+def append_expense(camp_id: str, new_row: dict) -> dict:
+    """支出台帳に1行追加する。日付→領収書番号の順でソートして書き戻す。
+
+    new_row["receipt"] が空なら次の空き番号を自動採番する。既存と重複する
+    番号が指定された場合は ValueError を送出し、ファイルには一切触れない。
+    """
+    rows, fieldnames = _read_expense_rows(camp_id)
+    existing_receipts = {(r.get("receipt") or "").strip() for r in rows}
+
+    receipt = (new_row.get("receipt") or "").strip()
+    if not receipt:
+        receipt = next_receipt_id(rows)
+    elif receipt in existing_receipts:
+        raise ValueError(f"領収書番号 '{receipt}' は既に使われています。")
+
+    row = dict(new_row)
+    row["receipt"] = receipt
+    row = {k: str(row.get(k, "")) for k in fieldnames}
+
+    rows.append(row)
+    rows.sort(key=lambda r: (r["date"], _receipt_sort_key(r["receipt"])))
+    _write_expense_rows(camp_id, rows, fieldnames)
+    return row
+
+
+def settle_payer_rows(camp_id: str, payer: str) -> dict:
+    """指定した立替者の未精算行(settled=no)をすべて yes にして書き戻す。"""
+    rows, fieldnames = _read_expense_rows(camp_id)
+    settled_items = []
+    for r in rows:
+        if r.get("payer", "").strip() == payer and r.get("settled", "").strip().lower() != "yes":
+            r["settled"] = "yes"
+            settled_items.append(r)
+    if settled_items:
+        _write_expense_rows(camp_id, rows, fieldnames)
+    total = sum(int(r["amount"]) for r in settled_items)
+    return {"items": settled_items, "total": total}
 
 
 # ---------------------------------------------------------------------------
