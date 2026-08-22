@@ -1,0 +1,151 @@
+# ラグビー部の年間業務。引継書と基礎データの散文をデータ化したもの。
+# `python3 -m scripts.nenkan now` で今月やること・期限超過を出す。
+#
+# month: 実施月(1-12)。範囲は [6,7] のように書く
+# due:   期限がはっきりしているものだけ MM-DD で書く
+# owner: 顧問 / 事務室 / 父母会 / 業者
+# skill: 関連するClaudeスキル（あれば）
+# money: 会計分類 A=校友会予算 B=父母会予算 C=都度徴収
+
+tasks:
+  - id: kotairen-touroku
+    title: 高体連・協会への選手登録
+    month: 4
+    owner: 顧問
+    money: A
+    note: |
+      東京都高体連ラグビー専門部への登録。Excelダウンロードにパスワードが要る。
+      登録費は生徒から徴収する（協会登録費徴収のお知らせを配布）。
+    skill: rugby-doc
+
+  - id: kouyukai-karibarai
+    title: 校友会予算の仮払い申請
+    month: 4
+    owner: 事務室
+    money: A
+    note: 大会参加費・協会登録費等。学校事務室へ予算請求する。
+
+  - id: shinnyubu-touroku
+    title: 新入部員の登録と用具の採寸・見積
+    month: 4
+    owner: 顧問
+    note: |
+      新入生の氏名・クラス・出席番号を roster に追加する。
+      ミズノの緒方さんに連絡し、採寸と見積を依頼する。
+    skill: rugby-order
+
+  - id: fubokai-soukai
+    title: 父母会総会 → 年間予算の確定
+    month: 5
+    owner: 父母会
+    money: B
+    note: |
+      メディカル費・補食栄養費・コーチ謝礼などの父母会予算はここで確定する。
+      ここで決まった額が、以後1年間の分類Bの上限になる。
+
+  - id: wear-shiharai
+    title: ウェア代の支払い
+    month: [6, 7]
+    owner: 顧問
+    money: C
+    note: |
+      2026年度からミズノが各家庭へ個別請求する方式に変更。
+      部の口座を経由しないので、部としては発注内容の確認のみ。
+    skill: rugby-order
+
+  - id: gasshuku-junbi
+    title: 夏合宿の準備（宿見積・バス手配・コーチ確認）
+    month: [6, 7]
+    owner: 顧問
+    money: C
+    note: |
+      1.菅平ホテルへ見積依頼 2.国際興業へバス見積・正式発注
+      3.畠山先生にコーチの参加人数と謝礼を確認 4.学校へ合宿申請
+      5.保護者向け案内書を作成し費用を徴収
+      コーチの帯同日は日別に確定させること（人数表と会計が両方これに依存する）。
+    skill: rugby-camp
+
+  - id: gasshuku-genkin
+    title: 合宿費の現金化と持参
+    month: 7
+    owner: 顧問
+    money: C
+    note: |
+      宿への支払いは現金。ATMには1日あたりの引き出し限度額があるため、
+      数日前から分けて下ろすこと。2026年は160万円あたりで上限に達した。
+      窓口で高額を下ろす場合は事前に支店へ電話しておく。
+
+  - id: natsu-gasshuku
+    title: 夏合宿の実施
+    month: 8
+    owner: 顧問
+    money: C
+    note: |
+      領収書はその場で回収し、当日中に台帳へ入れること。
+      2026年は8/3-8/5・8/7の領収書が回収できず、雑費が前年の16%しか
+      記録できなかった。氷・補食は毎日発生するので、日ごとに確認する。
+    skill: rugby-kaikei
+
+  - id: gasshuku-kaikei
+    title: 夏合宿の会計報告書を作成し配布
+    month: [8, 9]
+    owner: 顧問
+    money: C
+    note: |
+      合宿ごとに独立した報告書を作る（年度会計とは別物）。
+      バスの有料道路代・駐車場代は後日実費請求されるので、
+      それを待ってから最終確定させること。
+    skill: rugby-kaikei
+
+  - id: taikai-seikyu
+    title: 秋季大会・新人大会の参加費を事務室へ請求
+    month: 8
+    owner: 事務室
+    money: A
+    note: 8月中に請求すること。夏合宿の直後で忘れやすい。
+
+  - id: aki-taikai
+    title: 秋季大会・各種大会
+    month: [9, 10, 11, 12]
+    owner: 顧問
+    money: A
+
+  - id: fuyu-wear
+    title: 冬ウェアの発注
+    month: [9, 10]
+    owner: 顧問
+    money: C
+    note: サイズ集計はGoogleフォームで行い、同一生徒の重複は最新の回答を採用する。
+    skill: rugby-order
+
+  - id: jinendo-yosan
+    title: 次年度予算案の作成
+    month: 2
+    owner: 顧問
+    money: A
+    note: 校友会予算の申請。前年度の実績を踏まえて作る。
+
+  - id: kessan
+    title: 年度決算・会計報告
+    month: [2, 3]
+    owner: 顧問
+    note: |
+      校友会予算（A）と父母会予算（B）で別々に報告書を作る。
+      様式はドライブ「【05】ラグビー部会計関連」の前年度分を踏襲する。
+    skill: rugby-kaikei
+
+  - id: haru-gasshuku
+    title: 春合宿の準備・実施
+    month: [2, 3]
+    owner: 顧問
+    money: C
+    skill: rugby-camp
+
+  - id: hikitsugi
+    title: 引継書の更新
+    month: 3
+    owner: 顧問
+    note: |
+      年度で変わった運用・単価・連絡先を反映する。
+      数値は docs/rugby/基礎データ.md と data/rugby/ を正とし、
+      引継書には「どこを見ればよいか」を書く（数値を転記しない）。
