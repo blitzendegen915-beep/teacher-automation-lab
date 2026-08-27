@@ -193,6 +193,19 @@ def clean(prob, cfg):
         m = ndimage.binary_opening(m, disk(cfg.morph_open))
         m = ndimage.binary_fill_holes(m)
 
+    # 平滑化とモルフォロジーは成分を削るので、ここで新しい小片が生まれる。
+    # 形を整えたあとにもう一度だけ、小さすぎるものを落とす。
+    # フィルタを前半だけに掛けていると、この取りこぼしがそのまま残る。
+    lab, n = ndimage.label(m)
+    if n:
+        keep = np.zeros(n + 1, bool)
+        for i, sl in enumerate(ndimage.find_objects(lab), start=1):
+            if sl is None:
+                continue
+            if int((lab[sl] == i).sum()) >= cfg.min_area:
+                keep[i] = True
+        m = keep[lab]
+
     return m
 
 
