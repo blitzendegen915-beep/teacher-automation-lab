@@ -183,11 +183,14 @@ def clean(prob, cfg):
         f = ndimage.gaussian_filter(m.astype(np.float32), cfg.smooth)
         m = f > 0.5
 
-    # 細かい出っ張り・欠けを整える
-    if cfg.morph > 0:
-        st = disk(cfg.morph)
-        m = ndimage.binary_closing(m, st)
-        m = ndimage.binary_opening(m, st)
+    # 細かい出っ張りを削る。
+    # 「閉じる(closing)」は隙間を埋めるので、脚と脚の間や腕と胴の間を
+    # 癒着させて人の形を壊す。穴埋めは binary_fill_holes で済んでいるので
+    # 既定では閉じない。開く(opening)だけで小さな突起を落とす。
+    if cfg.morph_close > 0:
+        m = ndimage.binary_closing(m, disk(cfg.morph_close))
+    if cfg.morph_open > 0:
+        m = ndimage.binary_opening(m, disk(cfg.morph_open))
         m = ndimage.binary_fill_holes(m)
 
     return m
@@ -240,13 +243,15 @@ def main():
     ap.add_argument("--min-height", type=int, default=48, help="これ未満の高さは捨てる")
     ap.add_argument("--max-aspect", type=float, default=2.2, help="横幅が高さのこの倍を超えたら捨てる")
     ap.add_argument("--min-fill", type=float, default=0.12, help="外接矩形に対する充填率の下限")
-    ap.add_argument("--smooth", type=float, default=2.0, help="輪郭をなめらかにする強さ")
-    ap.add_argument("--morph", type=int, default=3, help="出っ張り・欠けを整える半径")
+    ap.add_argument("--smooth", type=float, default=1.2, help="輪郭をなめらかにする強さ")
+    ap.add_argument("--morph-open", type=int, default=2, help="小さな突起を削る半径")
+    ap.add_argument("--morph-close", type=int, default=0,
+                    help="隙間を埋める半径。上げると脚が癒着するので既定は0")
     ap.add_argument("--pad", type=float, default=0.08, help="切り出しの余白の割合")
     ap.add_argument("--rounds", type=int, default=2, help="切り出し→再切り出しの回数")
     ap.add_argument("--merge", type=int, default=22,
                     help="この半径だけ膨らませて箱をまとめる。頭・胴・脚の分裂を防ぐ")
-    ap.add_argument("--temporal", type=int, default=2, help="前後何フレームで平均するか（0で無効）")
+    ap.add_argument("--temporal", type=int, default=1, help="前後何フレームの中央値を取るか（0で無効）。平均だと動きが引き伸ばされて手足が潰れる")
     ap.add_argument("--feather", type=float, default=0.7, help="最終的なエッジの柔らかさ(px)")
     ap.add_argument("--start", type=float, default=0.0)
     ap.add_argument("--duration", type=float, default=0.0, help="0で最後まで")
@@ -332,13 +337,13 @@ def main():
         if len(buf) > k:
             buf.pop(0)
         if len(buf) == k:
-            flush(np.mean(buf, axis=0))
+            flush(np.median(buf, axis=0))
 
     # 時間平均の端を埋める
     if cfg.temporal > 0 and buf:
         while len(buf) > 1:
             buf.pop(0)
-            flush(np.mean(buf, axis=0))
+            flush(np.median(buf, axis=0))
 
     container.close()
     proc.stdin.close()
